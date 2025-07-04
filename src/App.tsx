@@ -79,6 +79,11 @@ const questions: Question[] = [
       { emoji: '🪑', text: 'I\'m good as is', value: 'none' },
       { emoji: '🧸', text: 'I\'m bringing my own cozy gear', value: 'own' }
     ]
+  },
+  {
+    id: 'email',
+    question: 'What\'s your email address?',
+    options: [] // Special case - will use text input instead of options
   }
 ];
 
@@ -88,6 +93,7 @@ function App() {
   const [showResults, setShowResults] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [customCandyInput, setCustomCandyInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -103,6 +109,13 @@ function App() {
     setCustomCandyInput(value);
     if (value.trim()) {
       setAnswers(prev => ({ ...prev, 'candy-choice': 'other', 'candy-custom': value }));
+    }
+  };
+
+  const handleEmailInput = (value: string) => {
+    setEmailInput(value);
+    if (value.trim()) {
+      setAnswers(prev => ({ ...prev, 'email': value }));
     }
   };
 
@@ -150,6 +163,7 @@ function App() {
     setAnswers({});
     setShowResults(false);
     setCustomCandyInput('');
+    setEmailInput('');
     setIsSaving(false);
     setSaveError(null);
   };
@@ -185,7 +199,12 @@ function App() {
                 return (
                   <div key={question.id} className="bg-black/20 rounded-xl p-6 border border-red-800/20">
                     <h3 className="text-red-200 font-semibold mb-2">{question.question}</h3>
-                    {selectedOption && (
+                    {question.id === 'email' ? (
+                      <div className="text-white text-lg">
+                        <span className="text-2xl mr-3">📧</span>
+                        {answers['email'] || 'No email provided'}
+                      </div>
+                    ) : selectedOption && (
                       <div className="text-white text-lg">
                         <span className="text-2xl mr-3">{selectedOption.emoji}</span>
                         {selectedOption.value === 'other' && question.id === 'candy-choice' 
@@ -261,22 +280,43 @@ function App() {
           </h2>
 
           <div className="space-y-4">
-            {currentQuestionData?.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleAnswer(currentQuestionData.id, option.value)}
-                className={`w-full p-4 rounded-xl text-left transition-all duration-200 transform hover:scale-102 hover:shadow-lg ${
-                  currentAnswer === option.value
-                    ? 'bg-gradient-to-r from-red-600 to-red-800 text-white shadow-lg'
-                    : 'bg-black/20 text-red-100 hover:bg-black/30 border border-red-800/20 hover:border-red-600/50'
-                }`}
-              >
-                <div className="flex items-center">
-                  <span className="text-2xl mr-4">{option.emoji}</span>
-                  <span className="text-lg font-medium">{option.text}</span>
+            {/* Email question - special case */}
+            {currentQuestionData?.id === 'email' ? (
+              <div className="space-y-4">
+                <div className="text-center mb-6">
+                  <span className="text-6xl">📧</span>
                 </div>
-              </button>
-            ))}
+                <input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={emailInput}
+                  onChange={(e) => handleEmailInput(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-black/30 text-white placeholder-red-300 border border-red-800/30 focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20 text-lg"
+                  autoFocus
+                />
+                <p className="text-red-300 text-sm text-center">
+                  We'll use this to identify your responses and send you movie night updates!
+                </p>
+              </div>
+            ) : (
+              /* Regular multiple choice questions */
+              currentQuestionData?.options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(currentQuestionData.id, option.value)}
+                  className={`w-full p-4 rounded-xl text-left transition-all duration-200 transform hover:scale-102 hover:shadow-lg ${
+                    currentAnswer === option.value
+                      ? 'bg-gradient-to-r from-red-600 to-red-800 text-white shadow-lg'
+                      : 'bg-black/20 text-red-100 hover:bg-black/30 border border-red-800/20 hover:border-red-600/50'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <span className="text-2xl mr-4">{option.emoji}</span>
+                    <span className="text-lg font-medium">{option.text}</span>
+                  </div>
+                </button>
+              ))
+            )}
             
             {/* Custom input for candy choice */}
             {currentQuestionData?.id === 'candy-choice' && currentAnswer === 'other' && (
@@ -333,9 +373,17 @@ function App() {
 
           <button
             onClick={nextQuestion}
-            disabled={!currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) || isSaving}
+            disabled={
+              (!currentAnswer && currentQuestionData?.id !== 'email') || 
+              (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) ||
+              (currentQuestionData?.id === 'email' && !emailInput.trim()) ||
+              isSaving
+            }
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-              !currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) || isSaving
+              (!currentAnswer && currentQuestionData?.id !== 'email') || 
+              (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) ||
+              (currentQuestionData?.id === 'email' && !emailInput.trim()) ||
+              isSaving
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-700 hover:to-red-900 transform hover:scale-105 shadow-lg'
             }`}

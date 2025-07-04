@@ -8,6 +8,7 @@ const pb = new PocketBase('http://localhost:8090');
 // Type definition for survey response
 export interface SurveyResponse {
   id?: string;
+  email: string;
   movie_type: string;
   snack_choice: string;
   candy_choice: string;
@@ -22,6 +23,7 @@ export interface SurveyResponse {
 export const saveSurveyResponse = async (answers: Record<string, string>) => {
   try {
     const surveyData: Partial<SurveyResponse> = {
+      email: answers['email'] || '',
       movie_type: answers['movie-type'] || '',
       snack_choice: answers['snack-choice'] || '',
       candy_choice: answers['candy-choice'] || '',
