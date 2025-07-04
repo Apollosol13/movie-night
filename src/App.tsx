@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, Film, Star, Award } from 'lucide-react';
+import { saveSurveyResponse } from './pocketbase';
 
 interface Question {
   id: string;
@@ -87,6 +88,8 @@ function App() {
   const [showResults, setShowResults] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [customCandyInput, setCustomCandyInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleAnswer = (questionId: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -103,7 +106,7 @@ function App() {
     }
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     if (currentQuestion < questions.length - 1) {
       setIsAnimating(true);
       setTimeout(() => {
@@ -111,11 +114,24 @@ function App() {
         setIsAnimating(false);
       }, 300);
     } else {
+      // Last question - save to PocketBase and show results
       setIsAnimating(true);
-      setTimeout(() => {
-        setShowResults(true);
+      setIsSaving(true);
+      setSaveError(null);
+      
+      try {
+        await saveSurveyResponse(answers);
+        setTimeout(() => {
+          setShowResults(true);
+          setIsAnimating(false);
+          setIsSaving(false);
+        }, 300);
+      } catch (error) {
+        console.error('Failed to save survey:', error);
+        setSaveError('Failed to save your responses. Please try again.');
         setIsAnimating(false);
-      }, 300);
+        setIsSaving(false);
+      }
     }
   };
 
@@ -134,6 +150,8 @@ function App() {
     setAnswers({});
     setShowResults(false);
     setCustomCandyInput('');
+    setIsSaving(false);
+    setSaveError(null);
   };
 
   const currentQuestionData = questions[currentQuestion];
@@ -182,6 +200,9 @@ function App() {
             </div>
 
             <div className="mt-8 text-center">
+              <div className="mb-4 text-green-400 text-sm">
+                ✅ Your responses have been saved successfully!
+              </div>
               <button
                 onClick={resetSurvey}
                 className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
@@ -273,13 +294,20 @@ function App() {
           </div>
         </div>
 
+        {/* Error Message */}
+        {saveError && (
+          <div className="mb-4 p-4 bg-red-900/50 border border-red-600 rounded-xl text-red-200 text-center">
+            {saveError}
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="flex justify-between items-center">
           <button
             onClick={prevQuestion}
-            disabled={currentQuestion === 0}
+            disabled={currentQuestion === 0 || isSaving}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-              currentQuestion === 0
+              currentQuestion === 0 || isSaving
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-gray-700 to-gray-800 text-white hover:from-gray-600 hover:to-gray-700 transform hover:scale-105'
             }`}
@@ -305,15 +333,24 @@ function App() {
 
           <button
             onClick={nextQuestion}
-            disabled={!currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim())}
+            disabled={!currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) || isSaving}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-              !currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim())
+              !currentAnswer || (currentAnswer === 'other' && currentQuestionData?.id === 'candy-choice' && !customCandyInput.trim()) || isSaving
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-700 hover:to-red-900 transform hover:scale-105 shadow-lg'
             }`}
           >
-            {currentQuestion === questions.length - 1 ? 'Finish' : 'Next'}
-            <ChevronRight className="w-5 h-5" />
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                {currentQuestion === questions.length - 1 ? 'Finish' : 'Next'}
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
       </div>
